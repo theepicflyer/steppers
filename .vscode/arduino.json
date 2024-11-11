@@ -1,5 +1,0 @@
-{
-    "board": "esp32:esp32:esp32_family",
-    "programmer": "esptool",
-    "sketch": "stepper_test/stepper_test.ino"
-}
