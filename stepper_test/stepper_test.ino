@@ -12,21 +12,20 @@
 const int TIME_START = 7; // Morning start hour
 const int TIME_END = 19; // Evening stop hour
 
-const int ROLLOUT_INTERVAL = 20; // Interval between rollouts, minutes
+const int ROLLOUT_INTERVAL = 1; // Interval between rollouts, minutes
 const float ROLLOUT_SPEED = 15; // mm per sec
-const float ROLLOUT_LENGTH = 1500; // mm
+const float ROLLOUT_LENGTH = 900; // mm
 
-const float TOTAL_LENGTH = 30; // meters
-const float OUTER_DIAMETER = 120 // mm
-const float INNER_DIAMETER = 40 // mm
-const float AVERAGE_THICKNESS = PI * (sq(OUTER_DIAMETER / 2) - sq(INNER_DIAMETER / 2)) / TOTAL_LENGTH
+const float TOTAL_LENGTH = 28; // meters
+const float OUTER_DIAMETER = 107; // mm
+const float INNER_DIAMETER = 97; // mm
+const float AVERAGE_THICKNESS = PI * (sq(OUTER_DIAMETER / 2) - sq(INNER_DIAMETER / 2)) / TOTAL_LENGTH;
 
-const int steps_per_rev = 1600; // Motor & driver steps per rev
+const int STEPS_PER_REV = 1600; // Motor & driver steps per rev
 
 // Global Variables
 
-float RADIUS_CURRENT;
-float RADIUS_NEXT;
+float RADIUS_CURRENT = 10;
 
 uint32_t lastRollTime;
 uint32_t nextRollTime;
@@ -66,25 +65,24 @@ void loop() {
   tft.setCursor(tft.width() / 2, 0); // Center top
 
   tft.setTextSize(3);
-  tft.drawString(unixTimeString(currentTime), tft.width() / 2, tft.height() / 2 - 36);
+  tft.drawString(unixTimeString(currentTime), tft.width() / 2, tft.height() / 2 - 48);
   tft.setTextSize(2);
-  tft.drawString("Next rollout time:", tft.width() / 2, tft.height() / 2);
-  tft.drawString(unixTimeString(nextRollTime), tft.width() / 2, tft.height() / 2 + 24);
+  tft.drawString("Next rollout time:", tft.width() / 2, tft.height() / 2 - 24);
+  tft.drawString(unixTimeString(nextRollTime), tft.width() / 2, tft.height() / 2);
   
   if (rtc.now().hour() >= TIME_START && rtc.now().hour() < TIME_END) {
     if (currentTime >= nextRollTime) {
-      float pulse_width;
+      int pulse_width;
       float rotations;      
-      pulse_width = (2 * PI / ROLLOUT_SPEED * RADIUS_CURRENT / steps_per_rev) / 2;
-      rotations = ROLLOUT_LENGTH / RADIUS_CURRENT / (2*PI);
+      pulse_width = 2 * PI / ROLLOUT_SPEED * RADIUS_CURRENT / STEPS_PER_REV / 2 * 1e6; // in us
+      rotations = (ROLLOUT_LENGTH / RADIUS_CURRENT / (2*PI));
+      
+      rollFilm(pulse_width, rotations);
 
-      tft.drawString("ROLLING", tft.width() / 2, tft.height() / 2);
-      rollFilm(pulse_width, rotations); // to fix types
+      RADIUS_CURRENT = sqrt(ROLLOUT_LENGTH * AVERAGE_THICKNESS / PI + sq(RADIUS_CURRENT));
 
-      RADIUS_CURRENT = sqrt(ROLLOUT_LENGTH * AVERAGE_THICKNESS / PI + sq(RADIUS_CURRENT))
-
-      lastRollTime = currentTime;
-      nextRollTime = currentTime + ROLLOUT_INTERVAL * 60;
+      lastRollTime = rtc.now().unixtime();
+      nextRollTime = lastRollTime + ROLLOUT_INTERVAL * 60;
     }
   }
 
@@ -92,15 +90,24 @@ void loop() {
 }
 
 void rollFilm(int pulse_width, float rotations) {
-  // implement rotations
+  // pulse_width in microseconds
   tft.fillScreen(TFT_BLACK);
-  tft.setTextSize(4);
-  tft.drawString("ROLLING", tft.width() / 2, tft.height() / 2);
+  tft.setTextSize(3);
+  tft.drawString("ROLLING", tft.width() / 2, tft.height() / 2 - 24);
+  char text1[30];
+  char text2[30];
+  sprintf(text1, "Pulse Width: %d", pulse_width);
+  sprintf(text2, "Rotations: %f", rotations);
+  tft.setTextSize(2);
+  tft.drawString(text1, tft.width() / 2, tft.height() / 2);
+  tft.drawString(text2, tft.width() / 2, tft.height() / 2 + 12);
 
   digitalWrite(enPin, LOW); // Active low
   digitalWrite(dirPin, HIGH);
 
-  for(int x = 0; x < 1600; x++) {
+  int steps = STEPS_PER_REV * rotations;
+
+  for(int x = 0; x < steps; x++) {
     digitalWrite(stepPin, HIGH); 
     delayMicroseconds(pulse_width);    // by changing this time delay between the steps we can change the rotation speed
     digitalWrite(stepPin, LOW);
