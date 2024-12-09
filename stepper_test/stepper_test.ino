@@ -17,9 +17,10 @@ const float ROLLOUT_SPEED = 15; // mm per sec
 const float ROLLOUT_LENGTH = 900; // mm
 
 const float TOTAL_LENGTH = 28; // meters
-const float OUTER_DIAMETER = 107; // mm
-const float INNER_DIAMETER = 97; // mm
+const float OUTER_DIAMETER = 108; // mm
+const float INNER_DIAMETER = 88; // mm
 const float AVERAGE_THICKNESS = PI * (sq(OUTER_DIAMETER / 2) - sq(INNER_DIAMETER / 2)) / (TOTAL_LENGTH * 1000);
+// const float AVERAGE_THICKNESS = 0.1
 
 const int STEPS_PER_REV = 1600; // Motor & driver steps per rev
 
