@@ -15,7 +15,7 @@ const int32_t RUN_VELOCITY = 36000; // 36000 steps per period * 2 seconds is 1 r
 const int32_t STOP_VELOCITY = 0;
 const int RUN_DURATION = 2000;
 const int STOP_DURATION = 2000;
-const uint8_t RUN_CURRENT_PERCENT = 100;  // Reduced to prevent overheating
+const uint8_t RUN_CURRENT_PERCENT = 100;  
 
 // Use Hardware Serial1 for TMC2209 communication
 HardwareSerial &serial_stream = Serial2;
