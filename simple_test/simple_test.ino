@@ -6,11 +6,11 @@ const int RX_PIN = 20;  // ESP32-C3 UART RX pin
 const int TX_PIN = 21;  // ESP32-C3 UART TX pin
 
 // Motor parameters
-const int32_t RUN_VELOCITY = 20000;
+const int32_t RUN_VELOCITY = 36000; // 36000 steps per period * 2 seconds is 1 revolution.
 const int32_t STOP_VELOCITY = 0;
 const int RUN_DURATION = 2000;
-const int STOP_DURATION = 1000;
-const uint8_t RUN_CURRENT_PERCENT = 80;  // Reduced to prevent overheating
+const int STOP_DURATION = 2000;
+const uint8_t RUN_CURRENT_PERCENT = 100;  // Reduced to prevent overheating
 
 // Use Hardware Serial1 for TMC2209 communication
 HardwareSerial &serial_stream = Serial1;
