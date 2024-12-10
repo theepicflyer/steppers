@@ -1,9 +1,14 @@
 #include <TMC2209.h>
 
 // ESP32-C3 UART configuration
+// const long SERIAL_BAUD_RATE = 115200;
+// const int RX_PIN = 20;  // ESP32-C3 UART RX pin
+// const int TX_PIN = 21;  // ESP32-C3 UART TX pin
+
+// LilyGo ESP32 UART configuration
 const long SERIAL_BAUD_RATE = 115200;
-const int RX_PIN = 20;  // ESP32-C3 UART RX pin
-const int TX_PIN = 21;  // ESP32-C3 UART TX pin
+const int RX_PIN = 27;  // LilyGo UART RX pin
+const int TX_PIN = 17;  // LilyGo UART TX pin
 
 // Motor parameters
 const int32_t RUN_VELOCITY = 36000; // 36000 steps per period * 2 seconds is 1 revolution.
@@ -13,7 +18,7 @@ const int STOP_DURATION = 2000;
 const uint8_t RUN_CURRENT_PERCENT = 100;  // Reduced to prevent overheating
 
 // Use Hardware Serial1 for TMC2209 communication
-HardwareSerial &serial_stream = Serial1;
+HardwareSerial &serial_stream = Serial2;
 TMC2209 stepper_driver;
 bool invert_direction = false;
 
@@ -40,7 +45,7 @@ void loop() {
     } else {
         stepper_driver.disableInverseMotorDirection();
     }
-    invert_direction = !invert_direction;
+    // invert_direction = !invert_direction;
 
     stepper_driver.moveAtVelocity(RUN_VELOCITY);
     delay(RUN_DURATION);
