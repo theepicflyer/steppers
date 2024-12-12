@@ -51,6 +51,8 @@ void setup() {
 
   stepper_driver.setRunCurrent(RUN_CURRENT_PERCENT);
   stepper_driver.enableCoolStep();
+  stepper_driver.enable();
+  stepper_driver.disableInverseMotorDirection();
 
   // Screen setup
   tft.init();
@@ -85,9 +87,7 @@ void loop() {
   
   if (rtc.now().hour() >= TIME_START && rtc.now().hour() < TIME_END) {
     if (currentTime >= nextRollTime) {
-      int pulse_width;
-      float rotations;
-      rotations = (ROLLOUT_LENGTH / RADIUS_CURRENT / (2*PI)); 
+      float rotations = (ROLLOUT_LENGTH / RADIUS_CURRENT / (2*PI)); 
                  
       rollFilm(rotations);
 
@@ -116,14 +116,10 @@ void rollFilm(float rotations) {
   tft.drawString(text1, tft.width() / 2, tft.height() / 2 + 12);
   tft.drawString(text2, tft.width() / 2, tft.height() / 2 + 36);
 
-  stepper_driver.enable();
-  stepper_driver.disableInverseMotorDirection();
-
   stepper_driver.moveAtVelocity(rotational_speed);
-  delay(ROLLOUT_PERIOD);
+  delay(ROLLOUT_PERIOD * 1000);
   stepper_driver.moveAtVelocity(0); // Change to the braking thing?
 
-  stepper_driver.disable();
   tft.fillScreen(TFT_BLACK);
 }
 
