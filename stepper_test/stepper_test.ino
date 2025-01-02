@@ -7,7 +7,7 @@
 
 // LilyGo ESP32 UART configuration
 const long SERIAL_BAUD_RATE = 115200;
-const int RX_PIN = 27;  // LilyGo UART RX pin
+const int RX_PIN = 15;  // LilyGo UART RX pin
 const int TX_PIN = 17;  // LilyGo UART TX pin
 
 // Settings
@@ -50,9 +50,11 @@ void setup() {
                       TMC2209::SERIAL_ADDRESS_0, RX_PIN, TX_PIN);
 
   stepper_driver.setRunCurrent(RUN_CURRENT_PERCENT);
+  stepper_driver.enableAutomaticCurrentScaling();
   stepper_driver.enableCoolStep();
   stepper_driver.enable();
-  stepper_driver.disableInverseMotorDirection();
+
+  stepper_driver.setStandstillMode(stepper_driver.FREEWHEELING);
 
   // Screen setup
   tft.init();
