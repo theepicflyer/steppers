@@ -11,12 +11,13 @@ const int UART2_RX = 27;  // LilyGo UART2 RX pin
 const int UART2_TX = 13;  // LilyGo UART2 TX pin
 
 // Motor parameters
-const int32_t RUN_VELOCITY = 17000; // 36000 steps per period * 2 seconds is 1 revolution.
+const int32_t RUN_VELOCITY = 14000; // 36000 steps per period * 2 seconds is 1 revolution.
 const int32_t STOP_VELOCITY = 0;
 
 // Test specific parameters
-const int DURATION = 2000;
-const uint8_t RUN_CURRENT_PERCENT = 70;  
+const int DELAY = 4000;
+const uint8_t RUN_CURRENT_PERCENT = 100;  
+const uint8_t HOLD_CURRENT_STANDSTILL = 0;
 
 // Init global variables
 HardwareSerial &serial_stream1 = Serial1;
@@ -30,55 +31,126 @@ void setup() {
     
     // Setup TMC2209 
     driver1.setup(serial_stream1, SERIAL_BAUD_RATE, TMC2209::SERIAL_ADDRESS_0, UART1_RX, UART1_TX);
+
     driver1.setRunCurrent(RUN_CURRENT_PERCENT);
+    driver1.setHoldCurrent(HOLD_CURRENT_STANDSTILL);
     // driver1.enableAutomaticCurrentScaling();
     driver1.enableCoolStep();
     driver1.enable();
-
-    driver2.setup(serial_stream2, SERIAL_BAUD_RATE, TMC2209::SERIAL_ADDRESS_0, UART2_RX, UART2_TX);
-    driver2.setRunCurrent(RUN_CURRENT_PERCENT);
-    // driver2.enableAutomaticCurrentScaling();
-    driver2.enableCoolStep();
-    driver2.enable();
-
-    // driver1.setStandstillMode(driver1.FREEWHEELING);
 }
 
 void loop() {
-    if (driver1.isSetupAndCommunicating())
-    {
-        Serial.println("Driver 1 is setup and communicating!");
-    }
-    else if (driver1.isCommunicatingButNotSetup())
-    {
-        Serial.println("Driver 1 is communicating but not setup!");
-        driver1.setup(serial_stream1, SERIAL_BAUD_RATE, TMC2209::SERIAL_ADDRESS_0, UART1_RX, UART1_TX);
-    }
-    else
-    {
-        Serial.println("Driver 1 is not communicating!");
-    }
+    TMC2209::Settings settings;
 
-    if (driver2.isSetupAndCommunicating())
-    {
-        Serial.println("Driver 2 is setup and communicating!");
-    }
-    else if (driver2.isCommunicatingButNotSetup())
-    {
-        Serial.println("Driver 2 is communicating but not setup!");
-        driver2.setup(serial_stream2, SERIAL_BAUD_RATE, TMC2209::SERIAL_ADDRESS_0, UART2_RX, UART2_TX);
-    }
-    else
-    {
-        Serial.println("Driver 2 is not communicating!");
-    }
+    Serial.println("Setting standstill mode = NORMAL");
+    driver1.setStandstillMode(driver1.NORMAL);
 
+    Serial.println("Reading:");
+    settings= driver1.getSettings();
+    Serial.print("settings.standstill_mode = ");
+    switch (settings.standstill_mode)
+    {
+        case TMC2209::NORMAL:
+            Serial.println("normal");
+            break;
+        case TMC2209::FREEWHEELING:
+            Serial.println("freewheeling");
+            break;
+        case TMC2209::STRONG_BRAKING:
+            Serial.println("strong_braking");
+            break;
+        case TMC2209::BRAKING:
+            Serial.println("braking");
+            break;
+    }
+    Serial.print("settings.irun_percent = ");
+    Serial.println(settings.irun_percent);
+    Serial.print("settings.ihold_percent = ");
+    Serial.println(settings.ihold_percent);
     Serial.println();
-    driver1.moveAtVelocity(RUN_VELOCITY);
-    driver2.moveAtVelocity(STOP_VELOCITY);
-    delay(DURATION);
+    delay(DELAY);
 
-    driver1.moveAtVelocity(STOP_VELOCITY);
-    driver2.moveAtVelocity(RUN_VELOCITY);
-    delay(DURATION);
+    Serial.println("Setting standstill mode = FREEWHEELING");
+    driver1.setStandstillMode(driver1.FREEWHEELING);
+
+    Serial.println("Reading:");
+    settings= driver1.getSettings();
+    Serial.print("settings.standstill_mode = ");
+    switch (settings.standstill_mode)
+    {
+        case TMC2209::NORMAL:
+            Serial.println("normal");
+            break;
+        case TMC2209::FREEWHEELING:
+            Serial.println("freewheeling");
+            break;
+        case TMC2209::STRONG_BRAKING:
+            Serial.println("strong_braking");
+            break;
+        case TMC2209::BRAKING:
+            Serial.println("braking");
+            break;
+    }
+    Serial.print("settings.irun_percent = ");
+    Serial.println(settings.irun_percent);
+    Serial.print("settings.ihold_percent = ");
+    Serial.println(settings.ihold_percent);
+    Serial.println();
+    delay(DELAY);
+
+    Serial.println("Setting standstill mode = STRONG_BRAKING");
+    driver1.setStandstillMode(driver1.STRONG_BRAKING);
+
+    Serial.println("Reading:");
+    settings= driver1.getSettings();
+    Serial.print("settings.standstill_mode = ");
+    switch (settings.standstill_mode)
+    {
+        case TMC2209::NORMAL:
+            Serial.println("normal");
+            break;
+        case TMC2209::FREEWHEELING:
+            Serial.println("freewheeling");
+            break;
+        case TMC2209::STRONG_BRAKING:
+            Serial.println("strong_braking");
+            break;
+        case TMC2209::BRAKING:
+            Serial.println("braking");
+            break;
+    }
+    Serial.print("settings.irun_percent = ");
+    Serial.println(settings.irun_percent);
+    Serial.print("settings.ihold_percent = ");
+    Serial.println(settings.ihold_percent);
+    Serial.println();
+    delay(DELAY);
+
+    Serial.println("Setting standstill mode = BRAKING");
+    driver1.setStandstillMode(driver1.BRAKING);
+
+    Serial.println("Reading:");
+    settings= driver1.getSettings();
+    Serial.print("settings.standstill_mode = ");
+    switch (settings.standstill_mode)
+    {
+        case TMC2209::NORMAL:
+            Serial.println("normal");
+            break;
+        case TMC2209::FREEWHEELING:
+            Serial.println("freewheeling");
+            break;
+        case TMC2209::STRONG_BRAKING:
+            Serial.println("strong_braking");
+            break;
+        case TMC2209::BRAKING:
+            Serial.println("braking");
+            break;
+    }
+    Serial.print("settings.irun_percent = ");
+    Serial.println(settings.irun_percent);
+    Serial.print("settings.ihold_percent = ");
+    Serial.println(settings.ihold_percent);
+    Serial.println();
+    delay(DELAY);
 }
