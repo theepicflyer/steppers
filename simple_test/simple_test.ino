@@ -22,8 +22,6 @@ const uint8_t HOLD_CURRENT_STANDSTILL = 0;
 // Init global variables
 HardwareSerial &serial_stream1 = Serial1;
 TMC2209 driver1;
-HardwareSerial &serial_stream2 = Serial2;
-TMC2209 driver2;
 
 void setup() {
     // Initialize Serial for debugging
@@ -41,12 +39,16 @@ void setup() {
 
 void loop() {
     TMC2209::Settings settings;
+    bool hardware_disabled;
 
     Serial.println("Setting standstill mode = NORMAL");
     driver1.setStandstillMode(driver1.NORMAL);
 
     Serial.println("Reading:");
     settings= driver1.getSettings();
+    hardware_disabled = driver1.hardwareDisabled();
+    Serial.print("hardware_disabled = ");
+    Serial.println(hardware_disabled);
     Serial.print("settings.standstill_mode = ");
     switch (settings.standstill_mode)
     {
@@ -75,6 +77,9 @@ void loop() {
 
     Serial.println("Reading:");
     settings= driver1.getSettings();
+    hardware_disabled = driver1.hardwareDisabled();
+    Serial.print("hardware_disabled = ");
+    Serial.println(hardware_disabled);
     Serial.print("settings.standstill_mode = ");
     switch (settings.standstill_mode)
     {
@@ -103,6 +108,9 @@ void loop() {
 
     Serial.println("Reading:");
     settings= driver1.getSettings();
+    hardware_disabled = driver1.hardwareDisabled();
+    Serial.print("hardware_disabled = ");
+    Serial.println(hardware_disabled);
     Serial.print("settings.standstill_mode = ");
     switch (settings.standstill_mode)
     {
@@ -131,6 +139,9 @@ void loop() {
 
     Serial.println("Reading:");
     settings= driver1.getSettings();
+    hardware_disabled = driver1.hardwareDisabled();
+    Serial.print("hardware_disabled = ");
+    Serial.println(hardware_disabled);
     Serial.print("settings.standstill_mode = ");
     switch (settings.standstill_mode)
     {
