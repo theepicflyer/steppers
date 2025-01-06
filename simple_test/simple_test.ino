@@ -73,11 +73,15 @@ void loop() {
         Serial.println("Driver 2 is not communicating!");
     }
 
+    bool hardware_disabled;
     Serial.println();
+
+    hardware_disabled = driver1.hardwareDisabled();
+    Serial.print("hardware_disabled = ");
+    Serial.println(hardware_disabled);
     driver1.moveAtVelocity(RUN_VELOCITY);
     driver2.moveAtVelocity(STOP_VELOCITY);
     delay(DURATION);
-
     driver1.moveAtVelocity(STOP_VELOCITY);
     driver2.moveAtVelocity(RUN_VELOCITY);
     delay(DURATION);
