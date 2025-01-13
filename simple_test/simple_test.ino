@@ -4,18 +4,18 @@
 const long SERIAL_BAUD_RATE = 115200;
 
 // UART Pins
-const int UART1_RX = 26;  // LilyGo UART1 RX pin
-const int UART1_TX = 17;  // LilyGo UART1 TX pin
+const int UART1_RX = 12;  // LilyGo UART1 RX pin
+const int UART1_TX = 13;  // LilyGo UART1 TX pin
 
-const int UART2_RX = 27;  // LilyGo UART2 RX pin
-const int UART2_TX = 13;  // LilyGo UART2 TX pin
+const int UART2_RX = 2;  // LilyGo UART2 RX pin
+const int UART2_TX = 15;  // LilyGo UART2 TX pin
 
 // Motor parameters
 const int32_t RUN_VELOCITY = 17000; // 36000 steps per period * 2 seconds is 1 revolution.
 const int32_t STOP_VELOCITY = 0;
 
 // Test specific parameters
-const int DURATION = 2000;
+const int DURATION = 5000;
 const uint8_t RUN_CURRENT_PERCENT = 70;  
 
 // Init global variables
@@ -31,13 +31,13 @@ void setup() {
     // Setup TMC2209 
     driver1.setup(serial_stream1, SERIAL_BAUD_RATE, TMC2209::SERIAL_ADDRESS_0, UART1_RX, UART1_TX);
     driver1.setRunCurrent(RUN_CURRENT_PERCENT);
-    // driver1.enableAutomaticCurrentScaling();
+    driver1.enableAutomaticCurrentScaling();
     driver1.enableCoolStep();
     driver1.enable();
 
     driver2.setup(serial_stream2, SERIAL_BAUD_RATE, TMC2209::SERIAL_ADDRESS_0, UART2_RX, UART2_TX);
     driver2.setRunCurrent(RUN_CURRENT_PERCENT);
-    // driver2.enableAutomaticCurrentScaling();
+    driver2.enableAutomaticCurrentScaling();
     driver2.enableCoolStep();
     driver2.enable();
 

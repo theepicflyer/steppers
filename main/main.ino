@@ -7,8 +7,11 @@
 
 // LilyGo ESP32 UART configuration
 const long SERIAL_BAUD_RATE = 115200;
-const int RX_PIN = 15;  // LilyGo UART RX pin
-const int TX_PIN = 17;  // LilyGo UART TX pin
+const int UART1_RX = 12;  // LilyGo UART1 RX pin
+const int UART1_TX = 13;  // LilyGo UART1 TX pin
+
+const int UART2_RX = 2;  // LilyGo UART2 RX pin
+const int UART2_TX = 15;  // LilyGo UART2 TX pin
 
 // Settings
 const int TIME_START = 7; // Morning start hour
@@ -47,7 +50,7 @@ void setup() {
 
   // Stepper setup
   stepper_driver.setup(serial_stream, SERIAL_BAUD_RATE, 
-                      TMC2209::SERIAL_ADDRESS_0, RX_PIN, TX_PIN);
+                      TMC2209::SERIAL_ADDRESS_0, UART1_RX, UART1_TX);
 
   stepper_driver.setRunCurrent(RUN_CURRENT_PERCENT);
   stepper_driver.enableAutomaticCurrentScaling();
