@@ -12,7 +12,7 @@
             ],
             "intelliSenseMode": "gcc-x64",
             "includePath": [
-                "/home/jiacheng/steppers/stepper_test",
+                "/home/jiacheng/steppers/main",
                 "/home/jiacheng/.arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.1-632e0c2a/esp32/qio_qspi/include",
                 "/home/jiacheng/.arduino15/packages/esp32/hardware/esp32/3.0.7/cores/esp32",
                 "/home/jiacheng/.arduino15/packages/esp32/hardware/esp32/3.0.7/variants/lilygo_t_display",

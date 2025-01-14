@@ -22,9 +22,9 @@ const float ROLLOUT_SPEED = 15; // mm per sec
 const float ROLLOUT_LENGTH = 900; // mm
 const float ROLLOUT_PERIOD = ROLLOUT_LENGTH / ROLLOUT_SPEED;
 
-const float TOTAL_LENGTH = 28; // meters
-const float OUTER_DIAMETER = 108; // mm
-const float INNER_DIAMETER = 88; // mm
+const float TOTAL_LENGTH = 30; // meters
+const float OUTER_DIAMETER = 74; // mm
+const float INNER_DIAMETER = 19; // mm
 const float AVERAGE_THICKNESS = PI * (sq(OUTER_DIAMETER / 2) - sq(INNER_DIAMETER / 2)) / (TOTAL_LENGTH * 1000);
 // const float AVERAGE_THICKNESS = 0.1
 
