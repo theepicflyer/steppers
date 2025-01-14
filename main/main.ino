@@ -42,22 +42,33 @@ TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
 
 // Use Hardware Serial1 for TMC2209 communication
 const uint8_t RUN_CURRENT_PERCENT = 100;  
-HardwareSerial &serial_stream = Serial2;
-TMC2209 stepper_driver;
+
+HardwareSerial &serial_stream1 = Serial1;
+TMC2209 receive_driver;
+
+HardwareSerial &serial_stream2 = Serial2;
+TMC2209 supply_driver;
+
 bool invert_direction = false;
 
 void setup() {
 
   // Stepper setup
-  stepper_driver.setup(serial_stream, SERIAL_BAUD_RATE, 
+  receive_driver.setup(serial_stream1, SERIAL_BAUD_RATE, 
                       TMC2209::SERIAL_ADDRESS_0, UART1_RX, UART1_TX);
+  receive_driver.setStandstillMode(receive_driver.STRONG_BRAKING);        // When not pulling
+  receive_driver.setRunCurrent(RUN_CURRENT_PERCENT);
+  receive_driver.enableAutomaticCurrentScaling();
+  receive_driver.enableCoolStep();
+  receive_driver.enable();
 
-  stepper_driver.setRunCurrent(RUN_CURRENT_PERCENT);
-  stepper_driver.enableAutomaticCurrentScaling();
-  stepper_driver.enableCoolStep();
-  stepper_driver.enable();
-
-  stepper_driver.setStandstillMode(stepper_driver.FREEWHEELING);
+  supply_driver.setup(serial_stream2, SERIAL_BAUD_RATE, 
+                      TMC2209::SERIAL_ADDRESS_0, UART2_RX, UART2_TX);
+  supply_driver.setStandstillMode(supply_driver.STRONG_BRAKING);                 // All the time
+  supply_driver.setRunCurrent(RUN_CURRENT_PERCENT);
+  supply_driver.enableAutomaticCurrentScaling();
+  supply_driver.enableCoolStep();
+  supply_driver.enable();
 
   // Screen setup
   tft.init();
@@ -81,9 +92,7 @@ void setup() {
 void loop() {
   uint32_t currentTime = rtc.now().unixtime();
 
-  //tft.fillScreen(TFT_BLACK);
   tft.setCursor(tft.width() / 2, 0); // Center top
-
   tft.setTextSize(3);
   tft.drawString(unixTimeString(currentTime), tft.width() / 2, tft.height() / 2 - 48);
   tft.setTextSize(2);
@@ -121,9 +130,9 @@ void rollFilm(float rotations) {
   tft.drawString(text1, tft.width() / 2, tft.height() / 2 + 12);
   tft.drawString(text2, tft.width() / 2, tft.height() / 2 + 36);
 
-  stepper_driver.moveAtVelocity(rotational_speed);
+  receive_driver.moveAtVelocity(rotational_speed);
   delay(ROLLOUT_PERIOD * 1000);
-  stepper_driver.moveAtVelocity(0); // Change to the braking thing?
+  receive_driver.moveAtVelocity(0); // Change to the braking thing?
 
   tft.fillScreen(TFT_BLACK);
 }
