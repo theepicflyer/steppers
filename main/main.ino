@@ -14,13 +14,13 @@ const int UART2_RX = 2;  // LilyGo UART2 RX pin
 const int UART2_TX = 15;  // LilyGo UART2 TX pin
 
 // Settings
-const int TIME_START = 7; // Morning start hour
-const int TIME_END = 19; // Evening stop hour
+const int TIME_START = 9; // Morning start hour
+const int TIME_END = 18; // Evening stop hour
 
-const int ROLLOUT_INTERVAL = 1; // Interval between rollouts, minutes
+const int ROLLOUT_INTERVAL = 60; // Interval between rollouts, minutes
 const float ROLLOUT_SPEED = 15; // mm per sec
-const float ROLLOUT_LENGTH = 900; // mm
-const float ROLLOUT_PERIOD = ROLLOUT_LENGTH / ROLLOUT_SPEED;
+const float DAY_ROLLOUT_LENGTH = 500; // mm
+const float NIGHT_ROLLOUT_LENGTH = 100; // mm
 
 const float TOTAL_LENGTH = 30; // meters
 const float OUTER_DIAMETER = 74; // mm
@@ -40,35 +40,64 @@ uint32_t nextRollTime;
 RTC_DS3231 rtc;
 TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
 
+bool invert_direction = true;
+
 // Use Hardware Serial1 for TMC2209 communication
 const uint8_t RUN_CURRENT_PERCENT = 100;  
 
 HardwareSerial &serial_stream1 = Serial1;
-TMC2209 receive_driver;
-
 HardwareSerial &serial_stream2 = Serial2;
-TMC2209 supply_driver;
+TMC2209 drivers[6] = {
+  TMC2209(),
+  TMC2209(),
+  TMC2209(),
+  TMC2209(),
+  TMC2209(),
+  TMC2209()
+};
 
-bool invert_direction = false;
+const TMC2209::SerialAddress ADDRESSES[6] = {
+  TMC2209::SERIAL_ADDRESS_0,
+  TMC2209::SERIAL_ADDRESS_1,
+  TMC2209::SERIAL_ADDRESS_2,
+  TMC2209::SERIAL_ADDRESS_0,
+  TMC2209::SERIAL_ADDRESS_1,
+  TMC2209::SERIAL_ADDRESS_2
+};
+
+const char *motor_names[6] = {
+  "R1",
+  "R2",
+  "R3",
+  "S1",
+  "S2",
+  "S3"
+};
+
 
 void setup() {
 
-  // Stepper setup
-  receive_driver.setup(serial_stream1, SERIAL_BAUD_RATE, 
-                      TMC2209::SERIAL_ADDRESS_0, UART1_RX, UART1_TX);
-  receive_driver.setStandstillMode(receive_driver.STRONG_BRAKING);        // When not pulling
-  receive_driver.setRunCurrent(RUN_CURRENT_PERCENT);
-  receive_driver.enableAutomaticCurrentScaling();
-  receive_driver.enableCoolStep();
-  receive_driver.enable();
+  for (int i = 0; i < 3; i++){
+    drivers[i].setup(serial_stream1, SERIAL_BAUD_RATE, ADDRESSES[i], UART1_RX, UART1_TX);
+    drivers[i].setStandstillMode(TMC2209::STRONG_BRAKING);        // When not pulling
+    drivers[i].setRunCurrent(RUN_CURRENT_PERCENT);
+    drivers[i].enableAutomaticCurrentScaling();
+    drivers[i].enableAutomaticGradientAdaptation();
+    drivers[i].enableCoolStep();
+    drivers[i].enableInverseMotorDirection();
+    drivers[i].enable();
+  }
 
-  supply_driver.setup(serial_stream2, SERIAL_BAUD_RATE, 
-                      TMC2209::SERIAL_ADDRESS_0, UART2_RX, UART2_TX);
-  supply_driver.setStandstillMode(supply_driver.STRONG_BRAKING);                 // All the time
-  supply_driver.setRunCurrent(RUN_CURRENT_PERCENT);
-  supply_driver.enableAutomaticCurrentScaling();
-  supply_driver.enableCoolStep();
-  supply_driver.enable();
+  for (int i = 3; i < 6; i++){
+    drivers[i].setup(serial_stream2, SERIAL_BAUD_RATE, ADDRESSES[i], UART2_RX, UART2_TX);
+    drivers[i].setStandstillMode(TMC2209::STRONG_BRAKING);        // When not pulling
+    drivers[i].setRunCurrent(RUN_CURRENT_PERCENT);
+    drivers[i].enableAutomaticCurrentScaling();
+    drivers[i].enableAutomaticGradientAdaptation();
+    drivers[i].enableCoolStep();
+    drivers[i].enableInverseMotorDirection();
+    drivers[i].enable();
+  }
 
   // Screen setup
   tft.init();
@@ -101,11 +130,29 @@ void loop() {
   
   if (rtc.now().hour() >= TIME_START && rtc.now().hour() < TIME_END) {
     if (currentTime >= nextRollTime) {
-      float rotations = (ROLLOUT_LENGTH / RADIUS_CURRENT / (2*PI)); 
-                 
-      rollFilm(rotations);
+      float rotations = (DAY_ROLLOUT_LENGTH / RADIUS_CURRENT / (2*PI)); 
+      float period = DAY_ROLLOUT_LENGTH / ROLLOUT_SPEED;
+      
+      for (int i = 0; i < 6; i++){
+        rollFilm(rotations, period, i);
+      }
 
-      RADIUS_CURRENT = sqrt(ROLLOUT_LENGTH * AVERAGE_THICKNESS / PI + sq(RADIUS_CURRENT));
+      RADIUS_CURRENT = sqrt(DAY_ROLLOUT_LENGTH * AVERAGE_THICKNESS / PI + sq(RADIUS_CURRENT));
+
+      lastRollTime = rtc.now().unixtime();
+      nextRollTime = lastRollTime + ROLLOUT_INTERVAL * 60;
+    }
+  }
+  else {
+    if (currentTime >= nextRollTime) {
+      float rotations = (NIGHT_ROLLOUT_LENGTH / RADIUS_CURRENT / (2*PI)); 
+      float period = NIGHT_ROLLOUT_LENGTH / ROLLOUT_SPEED;
+      
+      for (int i = 0; i < 6; i++){
+        rollFilm(rotations, period, i);
+      }
+
+      RADIUS_CURRENT = sqrt(NIGHT_ROLLOUT_LENGTH * AVERAGE_THICKNESS / PI + sq(RADIUS_CURRENT));
 
       lastRollTime = rtc.now().unixtime();
       nextRollTime = lastRollTime + ROLLOUT_INTERVAL * 60;
@@ -115,24 +162,28 @@ void loop() {
   delay(1000);
 }
 
-void rollFilm(float rotations) {
+void rollFilm(float rotations, float period, int motor_i) {
   int steps = STEPS_PER_REV * rotations;
-  int rotational_speed = steps / ROLLOUT_PERIOD;
+  int rotational_speed = steps / period;
   
   tft.fillScreen(TFT_BLACK);
-  tft.setTextSize(3);
-  tft.drawString("ROLLING", tft.width() / 2, tft.height() / 2 - 24);
+  
+  char text0[30];
   char text1[30];
   char text2[30];
+  sprintf(text0, "ROLLING: %s", motor_names[motor_i]);
   sprintf(text1, "Speed: %d", rotational_speed);
   sprintf(text2, "Rotations: %f", rotations);
+
+  tft.setTextSize(3);
+  tft.drawString(text0, tft.width() / 2, tft.height() / 2 - 24);
   tft.setTextSize(2);
   tft.drawString(text1, tft.width() / 2, tft.height() / 2 + 12);
   tft.drawString(text2, tft.width() / 2, tft.height() / 2 + 36);
 
-  receive_driver.moveAtVelocity(rotational_speed);
-  delay(ROLLOUT_PERIOD * 1000);
-  receive_driver.moveAtVelocity(0); // Change to the braking thing?
+  drivers[motor_i].moveAtVelocity(rotational_speed);
+  delay(period * 1000);
+  drivers[motor_i].moveAtVelocity(0);
 
   tft.fillScreen(TFT_BLACK);
 }

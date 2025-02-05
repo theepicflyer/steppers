@@ -35,54 +35,49 @@ void setup() {
     driver1.enableCoolStep();
     driver1.enable();
 
-    driver2.setup(serial_stream2, SERIAL_BAUD_RATE, TMC2209::SERIAL_ADDRESS_0, UART2_RX, UART2_TX);
-    driver2.setRunCurrent(RUN_CURRENT_PERCENT);
-    driver2.enableAutomaticCurrentScaling();
-    driver2.enableCoolStep();
-    driver2.enable();
-
-    // driver1.setStandstillMode(driver1.FREEWHEELING);
 }
 
 void loop() {
-    if (driver1.isSetupAndCommunicating())
-    {
-        Serial.println("Driver 1 is setup and communicating!");
-    }
-    else if (driver1.isCommunicatingButNotSetup())
-    {
-        Serial.println("Driver 1 is communicating but not setup!");
-        driver1.setup(serial_stream1, SERIAL_BAUD_RATE, TMC2209::SERIAL_ADDRESS_0, UART1_RX, UART1_TX);
-    }
-    else
-    {
-        Serial.println("Driver 1 is not communicating!");
-    }
 
-    if (driver2.isSetupAndCommunicating())
-    {
-        Serial.println("Driver 2 is setup and communicating!");
-    }
-    else if (driver2.isCommunicatingButNotSetup())
-    {
-        Serial.println("Driver 2 is communicating but not setup!");
-        driver2.setup(serial_stream2, SERIAL_BAUD_RATE, TMC2209::SERIAL_ADDRESS_0, UART2_RX, UART2_TX);
-    }
-    else
-    {
-        Serial.println("Driver 2 is not communicating!");
-    }
+    static bool is_running = false;
+    static unsigned long run_start_time;
 
-    bool hardware_disabled;
-    Serial.println();
+    // Modified movement section with StallGuard monitoring
+    if (!is_running) {
+        driver1.moveAtVelocity(RUN_VELOCITY);
+        run_start_time = millis();
+        is_running = true;
+        Serial.println("Starting movement with torque monitoring");
+    }
+    else {
+        // Monitor torque during movement
+        if (millis() - run_start_time < DURATION) {
+            // Read StallGuard result every 100ms
+            static unsigned long last_sg_read = 0;
+            if (millis() - last_sg_read >= 100) {
+                last_sg_read = millis();
+                
+                // Get torque feedback
+                uint16_t sg_result = driver1.getStallGuardResult();
+                Serial.print("Torque load: ");
+                Serial.print(sg_result);  // Lower values = higher load
+                Serial.print(" (");
+                Serial.print(map(sg_result, 0, 1023, 100, 0));
+                Serial.println("% load)");
 
-    hardware_disabled = driver1.hardwareDisabled();
-    Serial.print("hardware_disabled = ");
-    Serial.println(hardware_disabled);
-    driver1.moveAtVelocity(RUN_VELOCITY);
-    driver2.moveAtVelocity(STOP_VELOCITY);
-    delay(DURATION);
-    driver1.moveAtVelocity(STOP_VELOCITY);
-    driver2.moveAtVelocity(RUN_VELOCITY);
-    delay(DURATION);
+                // Safety threshold (calibrate for your system)
+                const uint16_t STALL_THRESHOLD = 100; 
+                if (sg_result < STALL_THRESHOLD) {
+                    Serial.println("WARNING: Approaching torque limits!");
+                    // Optional: Add automatic response here
+                }
+            }
+        }
+        else {
+            driver1.moveAtVelocity(STOP_VELOCITY);
+            is_running = false;
+            Serial.println("Stopped movement");
+            delay(DURATION);
+        }
+    }
 }
