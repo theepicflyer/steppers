@@ -128,38 +128,28 @@ void loop() {
   tft.drawString("Next rollout time:", tft.width() / 2, tft.height() / 2 - 24);
   tft.drawString(unixTimeString(nextRollTime), tft.width() / 2, tft.height() / 2);
   
-  if (rtc.now().hour() >= TIME_START && rtc.now().hour() < TIME_END) {
-    if (currentTime >= nextRollTime) {
-      float rotations = (DAY_ROLLOUT_LENGTH / RADIUS_CURRENT / (2*PI)); 
-      float period = DAY_ROLLOUT_LENGTH / ROLLOUT_SPEED;
-      
-      for (int i = 0; i < 6; i++){
-        rollFilm(rotations, period, i);
-      }
+  if (currentTime >= nextRollTime) {
+    float rollout_length;
+    float rotations;
+    float period;
 
-      RADIUS_CURRENT = sqrt(DAY_ROLLOUT_LENGTH * AVERAGE_THICKNESS / PI + sq(RADIUS_CURRENT));
-
-      lastRollTime = rtc.now().unixtime();
-      nextRollTime = lastRollTime + ROLLOUT_INTERVAL * 60;
+    // Basically 50 if office hours, 10 otherwise
+    if (rtc.now().hour() >= TIME_START && rtc.now().hour() < TIME_END) {  // Office hours
+      rollout_length = DAY_ROLLOUT_LENGTH;
     }
-  }
-  else {
-    if (currentTime >= nextRollTime) {
-      float rotations = (NIGHT_ROLLOUT_LENGTH / RADIUS_CURRENT / (2*PI)); 
-      float period = NIGHT_ROLLOUT_LENGTH / ROLLOUT_SPEED;
-      
-      for (int i = 0; i < 6; i++){
-        rollFilm(rotations, period, i);
-      }
+    else {  rollout_length = NIGHT_ROLLOUT_LENGTH;  }                     // Night hours
 
-      RADIUS_CURRENT = sqrt(NIGHT_ROLLOUT_LENGTH * AVERAGE_THICKNESS / PI + sq(RADIUS_CURRENT));
-
-      lastRollTime = rtc.now().unixtime();
-      nextRollTime = lastRollTime + ROLLOUT_INTERVAL * 60;
+    rotations = (rollout_length / RADIUS_CURRENT / (2*PI)); 
+    period = rollout_length / ROLLOUT_SPEED;
+    for (int i = 0; i < 6; i++){
+      rollFilm(rotations, period, i);
     }
-  }
 
-  delay(1000);
+    RADIUS_CURRENT = sqrt(rollout_length * AVERAGE_THICKNESS / PI + sq(RADIUS_CURRENT));
+    lastRollTime = rtc.now().unixtime();
+    nextRollTime = lastRollTime + ROLLOUT_INTERVAL * 60;
+  }
+  delay(1000);  // Check every second
 }
 
 void rollFilm(float rotations, float period, int motor_i) {
