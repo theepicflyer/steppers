@@ -5,25 +5,29 @@
 #include <math.h>
 #include <TMC2209.h>
 
-// LilyGo ESP32 UART configuration
-const long SERIAL_BAUD_RATE = 115200;
+// Black V4 PCB
 const int UART1_RX = 12;  // LilyGo UART1 RX pin
 const int UART1_TX = 13;  // LilyGo UART1 TX pin
-
 const int UART2_RX = 2;  // LilyGo UART2 RX pin
 const int UART2_TX = 15;  // LilyGo UART2 TX pin
+
+// White V3 PCB
+// const int UART1_RX = 26;  // LilyGo UART1 RX pin
+// const int UART1_TX = 17;  // LilyGo UART1 TX pin
+// const int UART2_RX = 27;  // LilyGo UART2 RX pin
+// const int UART2_TX = 13;  // LilyGo UART2 TX pin
 
 // Settings
 const int TIME_START = 9; // Morning start hour
 const int TIME_END = 18; // Evening stop hour
 
-const int ROLLOUT_INTERVAL = 60; // Interval between rollouts, minutes
+const float ROLLOUT_INTERVAL = 60; // Interval between rollouts, minutes
 const float ROLLOUT_SPEED = 15; // mm per sec
 const float DAY_ROLLOUT_LENGTH = 500; // mm
 const float NIGHT_ROLLOUT_LENGTH = 100; // mm
 
 const float TOTAL_LENGTH = 30; // meters
-const float OUTER_DIAMETER = 74; // mm
+const float OUTER_DIAMETER = 80; // mm
 const float INNER_DIAMETER = 19; // mm
 const float AVERAGE_THICKNESS = PI * (sq(OUTER_DIAMETER / 2) - sq(INNER_DIAMETER / 2)) / (TOTAL_LENGTH * 1000);
 // const float AVERAGE_THICKNESS = 0.1
@@ -74,9 +78,26 @@ const char *motor_names[6] = {
   "S3"
 };
 
+const long SERIAL_BAUD_RATE = 115200;
 
 void setup() {
+  // Screen setup
+  tft.init();
+  tft.setRotation(1); // Check the orientation
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextSize(2);
+  
+  tft.drawString("HELLO", tft.width() / 2, tft.height() / 2);
 
+  // RTC setup
+  if (!rtc.begin()) {
+    tft.drawString("ERROR: RTC NOT DETECTED", tft.width() / 2, tft.height() / 2);
+    while (1);
+  }
+
+  delay(500);
+  // TMC2209 setup
   for (int i = 0; i < 3; i++){
     drivers[i].setup(serial_stream1, SERIAL_BAUD_RATE, ADDRESSES[i], UART1_RX, UART1_TX);
     drivers[i].setStandstillMode(TMC2209::STRONG_BRAKING);        // When not pulling
@@ -99,23 +120,8 @@ void setup() {
     drivers[i].enable();
   }
 
-  // Screen setup
-  tft.init();
-  tft.setRotation(1); // Check the orientation
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextSize(2);
-  
-  tft.drawString("HELLO", tft.width() / 2, tft.height() / 2);
-
-  // RTC setup
-  if (!rtc.begin()) {
-    tft.drawString("ERROR: RTC NOT DETECTED", tft.width() / 2, tft.height() / 2);
-    while (1);
-  }
-
-  // Do an initial roll in 1 minute
-  nextRollTime = rtc.now().unixtime() + 1 * 60;
+  // Do an initial roll in 30s
+  nextRollTime = rtc.now().unixtime() + 10;
 }
 
 void loop() {
@@ -147,7 +153,7 @@ void loop() {
 
     RADIUS_CURRENT = sqrt(rollout_length * AVERAGE_THICKNESS / PI + sq(RADIUS_CURRENT));
     lastRollTime = rtc.now().unixtime();
-    nextRollTime = lastRollTime + ROLLOUT_INTERVAL * 60;
+    nextRollTime = lastRollTime + int(ROLLOUT_INTERVAL * 60);
   }
   delay(1000);  // Check every second
 }

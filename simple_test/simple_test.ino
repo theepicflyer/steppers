@@ -29,6 +29,7 @@ void setup() {
     Serial.begin(SERIAL_BAUD_RATE);
     
     // Setup TMC2209 
+    delay(1000);
     driver1.setup(serial_stream1, SERIAL_BAUD_RATE, TMC2209::SERIAL_ADDRESS_0, UART1_RX, UART1_TX);
     driver1.setRunCurrent(RUN_CURRENT_PERCENT);
     driver1.enableAutomaticCurrentScaling();
