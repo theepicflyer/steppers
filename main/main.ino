@@ -5,6 +5,10 @@
 #include <math.h>
 #include <TMC2209.h>
 
+#define uS_TO_S_FACTOR 1000000ULL
+
+const int RELAY_PIN = 21;
+
 // Black V4 PCB
 const int UART1_RX = 12;  // LilyGo UART1 RX pin
 const int UART1_TX = 13;  // LilyGo UART1 TX pin
@@ -18,8 +22,8 @@ const int UART2_TX = 15;  // LilyGo UART2 TX pin
 // const int UART2_TX = 13;  // LilyGo UART2 TX pin
 
 // Settings
-const int TIME_START = 9; // Morning start hour
-const int TIME_END = 18; // Evening stop hour
+const int DAY_START = 9; // Morning start hour
+const int DAY_END = 18; // Evening stop hour
 
 const float ROLLOUT_INTERVAL = 60; // Interval between rollouts, minutes
 const float ROLLOUT_SPEED = 15; // mm per sec
@@ -35,11 +39,7 @@ const float AVERAGE_THICKNESS = PI * (sq(OUTER_DIAMETER / 2) - sq(INNER_DIAMETER
 const int STEPS_PER_REV = 72000; // Motor & driver steps per rev
 
 // Global Variables
-
-float RADIUS_CURRENT = 10;
-
-uint32_t lastRollTime;
-uint32_t nextRollTime;
+RTC_DATA_ATTR float RADIUS_CURRENT = 10;
 
 RTC_DS3231 rtc;
 TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
@@ -81,6 +81,11 @@ const char *motor_names[6] = {
 const long SERIAL_BAUD_RATE = 115200;
 
 void setup() {
+  uint32_t wakeTime = rtc.now().unixtime();
+
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, HIGH);
+
   // Screen setup
   tft.init();
   tft.setRotation(1); // Check the orientation
@@ -106,7 +111,6 @@ void setup() {
     drivers[i].enableAutomaticGradientAdaptation();
     drivers[i].enableCoolStep();
     drivers[i].enableInverseMotorDirection();
-    drivers[i].enable();
   }
 
   for (int i = 3; i < 6; i++){
@@ -117,15 +121,7 @@ void setup() {
     drivers[i].enableAutomaticGradientAdaptation();
     drivers[i].enableCoolStep();
     drivers[i].enableInverseMotorDirection();
-    drivers[i].enable();
   }
-
-  // Do an initial roll in 30s
-  nextRollTime = rtc.now().unixtime() + 10;
-}
-
-void loop() {
-  uint32_t currentTime = rtc.now().unixtime();
 
   tft.setCursor(tft.width() / 2, 0); // Center top
   tft.setTextSize(3);
@@ -134,28 +130,39 @@ void loop() {
   tft.drawString("Next rollout time:", tft.width() / 2, tft.height() / 2 - 24);
   tft.drawString(unixTimeString(nextRollTime), tft.width() / 2, tft.height() / 2);
   
-  if (currentTime >= nextRollTime) {
-    float rollout_length;
-    float rotations;
-    float period;
+  float rollout_length;
+  float rotations;
+  float period;
 
-    // Basically 50 if office hours, 10 otherwise
-    if (rtc.now().hour() >= TIME_START && rtc.now().hour() < TIME_END) {  // Office hours
-      rollout_length = DAY_ROLLOUT_LENGTH;
-    }
-    else {  rollout_length = NIGHT_ROLLOUT_LENGTH;  }                     // Night hours
-
-    rotations = (rollout_length / RADIUS_CURRENT / (2*PI)); 
-    period = rollout_length / ROLLOUT_SPEED;
-    for (int i = 0; i < 6; i++){
-      rollFilm(rotations, period, i);
-    }
-
-    RADIUS_CURRENT = sqrt(rollout_length * AVERAGE_THICKNESS / PI + sq(RADIUS_CURRENT));
-    lastRollTime = rtc.now().unixtime();
-    nextRollTime = lastRollTime + int(ROLLOUT_INTERVAL * 60);
+  // Basically 50 if office hours, 10 otherwise
+  if (rtc.now().hour() >= DAY_START && rtc.now().hour() < DAY_END) {  // Office hours
+    rollout_length = DAY_ROLLOUT_LENGTH;
   }
-  delay(1000);  // Check every second
+  else {  rollout_length = NIGHT_ROLLOUT_LENGTH;  }                     // Night hours
+
+  rotations = (rollout_length / RADIUS_CURRENT / (2*PI)); 
+  period = rollout_length / ROLLOUT_SPEED;
+
+  // Consider rolling all at once
+  for (int i = 0; i < 6; i++){
+    rollFilm(rotations, period, i);
+  }
+
+  // Cut 12V
+  digitalWrite(RELAY_PIN, LOW);
+
+  // Edit global variable
+  RADIUS_CURRENT = sqrt(rollout_length * AVERAGE_THICKNESS / PI + sq(RADIUS_CURRENT));
+  
+  // Calculate and sleep until next roll time
+  uint32_t nextRollTime = wakeTime + int(ROLLOUT_INTERVAL * 60);
+  uint32_t sleepTime = nextRollTime - rtc.now().unixtime();
+  esp_sleep_enable_timer_wakeup(sleepTime * uS_TO_S_FACTOR);
+  esp_deep_sleep_start();
+}
+
+void loop() {
+  
 }
 
 void rollFilm(float rotations, float period, int motor_i) {
@@ -177,9 +184,11 @@ void rollFilm(float rotations, float period, int motor_i) {
   tft.drawString(text1, tft.width() / 2, tft.height() / 2 + 12);
   tft.drawString(text2, tft.width() / 2, tft.height() / 2 + 36);
 
+  drivers[motor_i].enable();
   drivers[motor_i].moveAtVelocity(rotational_speed);
   delay(period * 1000);
   drivers[motor_i].moveAtVelocity(0);
+  drivers[motor_i].disable();
 
   tft.fillScreen(TFT_BLACK);
 }
