@@ -1,84 +1,122 @@
+#include <TFT_eSPI.h>
+#include <SPI.h>
+#include <Wire.h>
+#include <RTClib.h>
+#include <math.h>
 #include <TMC2209.h>
 
-// LilyGo ESP32 UART configuration
+// Black V4 PCB
+const int UART1_RX = 12; // LilyGo UART1 RX pin
+const int UART1_TX = 13; // LilyGo UART1 TX pin
+const int UART2_RX = 2;  // LilyGo UART2 RX pin
+const int UART2_TX = 15; // LilyGo UART2 TX pin
+
+// White V3 PCB
+// const int UART1_RX = 26;  // LilyGo UART1 RX pin
+// const int UART1_TX = 17;  // LilyGo UART1 TX pin
+// const int UART2_RX = 27;  // LilyGo UART2 RX pin
+// const int UART2_TX = 13;  // LilyGo UART2 TX pin
+
+
+RTC_DS3231 rtc;
+TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
+
+bool invert_direction = true;
+
+// Use Hardware Serial1 for TMC2209 communication
+const uint8_t RUN_CURRENT_PERCENT = 90;
+
+const float idle_percent = 0.85;
+const int idle_period = int(idle_percent * 60.0);
+const int run_period = 60 - idle_period;
+
+HardwareSerial &serial_stream1 = Serial1;
+HardwareSerial &serial_stream2 = Serial2;
+TMC2209 drivers[6] = {
+    TMC2209(),
+    TMC2209(),
+    TMC2209(),
+    TMC2209(),
+    TMC2209(),
+    TMC2209()};
+
+const TMC2209::SerialAddress ADDRESSES[6] = {
+    TMC2209::SERIAL_ADDRESS_0,
+    TMC2209::SERIAL_ADDRESS_1,
+    TMC2209::SERIAL_ADDRESS_2,
+    TMC2209::SERIAL_ADDRESS_0,
+    TMC2209::SERIAL_ADDRESS_1,
+    TMC2209::SERIAL_ADDRESS_2};
+
+const char *motor_names[6] = {
+    "R1",
+    "R2",
+    "R3",
+    "S1",
+    "S2",
+    "S3"};
+
 const long SERIAL_BAUD_RATE = 115200;
 
-// UART Pins
-const int UART1_RX = 12;  // LilyGo UART1 RX pin
-const int UART1_TX = 13;  // LilyGo UART1 TX pin
+void setup()
+{
+    // Screen setup
+    tft.init();
+    tft.setRotation(1); // Check the orientation
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextSize(2);
 
-const int UART2_RX = 2;  // LilyGo UART2 RX pin
-const int UART2_TX = 15;  // LilyGo UART2 TX pin
+    tft.drawString("HELLO", tft.width() / 2, tft.height() / 2);
 
-// Motor parameters
-const int32_t RUN_VELOCITY = 17000; // 36000 steps per period * 2 seconds is 1 revolution.
-const int32_t STOP_VELOCITY = 0;
+    // RTC setup
+    if (!rtc.begin())
+    {
+        tft.drawString("ERROR: RTC NOT DETECTED", tft.width() / 2, tft.height() / 2);
+        while (1)
+            ;
+    }
 
-// Test specific parameters
-const int DURATION = 5000;
-const uint8_t RUN_CURRENT_PERCENT = 70;  
+    delay(500);
+    // TMC2209 setup
+    for (int i = 0; i < 3; i++)
+    {
+        drivers[i].setup(serial_stream1, SERIAL_BAUD_RATE, ADDRESSES[i], UART1_RX, UART1_TX);
+        drivers[i].setStandstillMode(TMC2209::STRONG_BRAKING); // When not pulling
+        drivers[i].setRunCurrent(RUN_CURRENT_PERCENT);
+        drivers[i].disableAutomaticCurrentScaling();
+        drivers[i].setPwmOffset(125);
+        // drivers[i].enableAutomaticGradientAdaptation();
+        drivers[i].enableCoolStep();
+        drivers[i].enableInverseMotorDirection();
+        drivers[i].enable();
+    }
 
-// Init global variables
-HardwareSerial &serial_stream1 = Serial1;
-TMC2209 driver1;
-HardwareSerial &serial_stream2 = Serial2;
-TMC2209 driver2;
-
-void setup() {
-    // Initialize Serial for debugging
-    Serial.begin(SERIAL_BAUD_RATE);
-    
-    // Setup TMC2209 
-    delay(1000);
-    driver1.setup(serial_stream1, SERIAL_BAUD_RATE, TMC2209::SERIAL_ADDRESS_0, UART1_RX, UART1_TX);
-    driver1.setRunCurrent(RUN_CURRENT_PERCENT);
-    driver1.enableAutomaticCurrentScaling();
-    driver1.enableCoolStep();
-    driver1.enable();
-
+    for (int i = 3; i < 6; i++)
+    {
+        drivers[i].setup(serial_stream2, SERIAL_BAUD_RATE, ADDRESSES[i], UART2_RX, UART2_TX);
+        drivers[i].setStandstillMode(TMC2209::STRONG_BRAKING); // When not pulling
+        drivers[i].setRunCurrent(RUN_CURRENT_PERCENT);
+        drivers[i].disableAutomaticCurrentScaling();
+        drivers[i].setPwmOffset(125);
+        // drivers[i].enableAutomaticGradientAdaptation();
+        drivers[i].enableCoolStep();
+        drivers[i].enableInverseMotorDirection();
+        drivers[i].enable();
+    }
 }
 
-void loop() {
-
-    static bool is_running = false;
-    static unsigned long run_start_time;
-
-    // Modified movement section with StallGuard monitoring
-    if (!is_running) {
-        driver1.moveAtVelocity(RUN_VELOCITY);
-        run_start_time = millis();
-        is_running = true;
-        Serial.println("Starting movement with torque monitoring");
+void loop()
+{
+    for (int i = 0; i < 6; i++)
+    {
+        drivers[i].moveAtVelocity(30000);
     }
-    else {
-        // Monitor torque during movement
-        if (millis() - run_start_time < DURATION) {
-            // Read StallGuard result every 100ms
-            static unsigned long last_sg_read = 0;
-            if (millis() - last_sg_read >= 100) {
-                last_sg_read = millis();
-                
-                // Get torque feedback
-                uint16_t sg_result = driver1.getStallGuardResult();
-                Serial.print("Torque load: ");
-                Serial.print(sg_result);  // Lower values = higher load
-                Serial.print(" (");
-                Serial.print(map(sg_result, 0, 1023, 100, 0));
-                Serial.println("% load)");
+    delay(run_period * 1000);
 
-                // Safety threshold (calibrate for your system)
-                const uint16_t STALL_THRESHOLD = 100; 
-                if (sg_result < STALL_THRESHOLD) {
-                    Serial.println("WARNING: Approaching torque limits!");
-                    // Optional: Add automatic response here
-                }
-            }
-        }
-        else {
-            driver1.moveAtVelocity(STOP_VELOCITY);
-            is_running = false;
-            Serial.println("Stopped movement");
-            delay(DURATION);
-        }
+    for (int i = 0; i < 6; i++)
+    {
+        drivers[i].moveAtVelocity(0);
     }
+    delay(idle_period * 1000);
 }
