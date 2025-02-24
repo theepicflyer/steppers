@@ -7,7 +7,7 @@
 
 #define uS_TO_S_FACTOR 1000000ULL
 
-const int RELAY_PIN = 21;
+const int RELAY_PIN = 27;
 
 // Black V4 PCB
 const int UART1_RX = 12;  // LilyGo UART1 RX pin
@@ -47,7 +47,8 @@ TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
 bool invert_direction = true;
 
 // Use Hardware Serial1 for TMC2209 communication
-const uint8_t RUN_CURRENT_PERCENT = 100;  
+const uint8_t RUN_CURRENT_PERCENT = 70;  
+const uint8_t HOLD_CURRENT_PERCENT = 0;  
 
 HardwareSerial &serial_stream1 = Serial1;
 HardwareSerial &serial_stream2 = Serial2;
@@ -81,18 +82,12 @@ const char *motor_names[6] = {
 const long SERIAL_BAUD_RATE = 115200;
 
 void setup() {
-  uint32_t wakeTime = rtc.now().unixtime();
-
-  pinMode(RELAY_PIN, OUTPUT);
-  digitalWrite(RELAY_PIN, HIGH);
-
   // Screen setup
   tft.init();
   tft.setRotation(1); // Check the orientation
   tft.fillScreen(TFT_BLACK);
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(2);
-  
   tft.drawString("HELLO", tft.width() / 2, tft.height() / 2);
 
   // RTC setup
@@ -101,35 +96,32 @@ void setup() {
     while (1);
   }
 
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, HIGH);
+  uint32_t wakeTime = rtc.now().unixtime();
+
   delay(500);
   // TMC2209 setup
   for (int i = 0; i < 3; i++){
     drivers[i].setup(serial_stream1, SERIAL_BAUD_RATE, ADDRESSES[i], UART1_RX, UART1_TX);
-    drivers[i].setStandstillMode(TMC2209::STRONG_BRAKING);        // When not pulling
     drivers[i].setRunCurrent(RUN_CURRENT_PERCENT);
-    drivers[i].enableAutomaticCurrentScaling();
-    drivers[i].enableAutomaticGradientAdaptation();
+    drivers[i].setHoldCurrent(HOLD_CURRENT_PERCENT);
+    drivers[i].disableAutomaticCurrentScaling();
+    drivers[i].setPwmOffset(255);
     drivers[i].enableCoolStep();
     drivers[i].enableInverseMotorDirection();
   }
 
   for (int i = 3; i < 6; i++){
     drivers[i].setup(serial_stream2, SERIAL_BAUD_RATE, ADDRESSES[i], UART2_RX, UART2_TX);
-    drivers[i].setStandstillMode(TMC2209::STRONG_BRAKING);        // When not pulling
     drivers[i].setRunCurrent(RUN_CURRENT_PERCENT);
-    drivers[i].enableAutomaticCurrentScaling();
-    drivers[i].enableAutomaticGradientAdaptation();
+    drivers[i].setHoldCurrent(HOLD_CURRENT_PERCENT);
+    drivers[i].disableAutomaticCurrentScaling();
+    drivers[i].setPwmOffset(255);
     drivers[i].enableCoolStep();
     drivers[i].enableInverseMotorDirection();
   }
 
-  tft.setCursor(tft.width() / 2, 0); // Center top
-  tft.setTextSize(3);
-  tft.drawString(unixTimeString(currentTime), tft.width() / 2, tft.height() / 2 - 48);
-  tft.setTextSize(2);
-  tft.drawString("Next rollout time:", tft.width() / 2, tft.height() / 2 - 24);
-  tft.drawString(unixTimeString(nextRollTime), tft.width() / 2, tft.height() / 2);
-  
   float rollout_length;
   float rotations;
   float period;

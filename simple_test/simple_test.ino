@@ -26,7 +26,7 @@ TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
 bool invert_direction = true;
 
 // Use Hardware Serial1 for TMC2209 communication
-const uint8_t RUN_CURRENT_PERCENT = 90;
+const uint8_t RUN_CURRENT_PERCENT = 70;
 const uint8_t HOLD_CURRENT_PERCENT = 0;
 
 const float idle_percent = 0.85;
@@ -90,10 +90,8 @@ void setup()
         drivers[i].setStandstillMode(TMC2209::STRONG_BRAKING); // When not pulling
         drivers[i].disableAutomaticCurrentScaling();
         drivers[i].setPwmOffset(125);
-        // drivers[i].enableAutomaticGradientAdaptation();
         drivers[i].enableCoolStep();
         drivers[i].enableInverseMotorDirection();
-        // drivers[i].enable();
     }
 
     for (int i = 3; i < 6; i++)
