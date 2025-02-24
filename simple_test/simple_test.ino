@@ -19,7 +19,6 @@ const int UART2_TX = 15; // LilyGo UART2 TX pin
 // const int UART2_RX = 27;  // LilyGo UART2 RX pin
 // const int UART2_TX = 13;  // LilyGo UART2 TX pin
 
-
 RTC_DS3231 rtc;
 TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
 
@@ -126,5 +125,4 @@ void setup()
 
 void loop()
 {
-    
 }
