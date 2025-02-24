@@ -5,6 +5,8 @@
 #include <math.h>
 #include <TMC2209.h>
 
+#define uS_TO_S_FACTOR 1000000ULL
+
 // Black V4 PCB
 const int UART1_RX = 12; // LilyGo UART1 RX pin
 const int UART1_TX = 13; // LilyGo UART1 TX pin
@@ -17,14 +19,14 @@ const int UART2_TX = 15; // LilyGo UART2 TX pin
 // const int UART2_RX = 27;  // LilyGo UART2 RX pin
 // const int UART2_TX = 13;  // LilyGo UART2 TX pin
 
-
 RTC_DS3231 rtc;
 TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
 
 bool invert_direction = true;
 
 // Use Hardware Serial1 for TMC2209 communication
-const uint8_t RUN_CURRENT_PERCENT = 90;
+const uint8_t RUN_CURRENT_PERCENT = 70;
+const uint8_t HOLD_CURRENT_PERCENT = 0;
 
 const float idle_percent = 0.85;
 const int idle_period = int(idle_percent * 60.0);
@@ -82,34 +84,32 @@ void setup()
     for (int i = 0; i < 3; i++)
     {
         drivers[i].setup(serial_stream1, SERIAL_BAUD_RATE, ADDRESSES[i], UART1_RX, UART1_TX);
-        drivers[i].setStandstillMode(TMC2209::STRONG_BRAKING); // When not pulling
         drivers[i].setRunCurrent(RUN_CURRENT_PERCENT);
+        drivers[i].setHoldCurrent(HOLD_CURRENT_PERCENT);
+        drivers[i].setStandstillMode(TMC2209::STRONG_BRAKING); // When not pulling
         drivers[i].disableAutomaticCurrentScaling();
         drivers[i].setPwmOffset(125);
-        // drivers[i].enableAutomaticGradientAdaptation();
         drivers[i].enableCoolStep();
         drivers[i].enableInverseMotorDirection();
-        drivers[i].enable();
     }
 
     for (int i = 3; i < 6; i++)
     {
         drivers[i].setup(serial_stream2, SERIAL_BAUD_RATE, ADDRESSES[i], UART2_RX, UART2_TX);
-        drivers[i].setStandstillMode(TMC2209::STRONG_BRAKING); // When not pulling
         drivers[i].setRunCurrent(RUN_CURRENT_PERCENT);
+        drivers[i].setHoldCurrent(HOLD_CURRENT_PERCENT);
+        drivers[i].setStandstillMode(TMC2209::STRONG_BRAKING); // When not pulling
         drivers[i].disableAutomaticCurrentScaling();
         drivers[i].setPwmOffset(125);
         // drivers[i].enableAutomaticGradientAdaptation();
         drivers[i].enableCoolStep();
         drivers[i].enableInverseMotorDirection();
-        drivers[i].enable();
+        // drivers[i].enable();
     }
-}
 
-void loop()
-{
     for (int i = 0; i < 6; i++)
     {
+        drivers[i].enable();
         drivers[i].moveAtVelocity(30000);
     }
     delay(run_period * 1000);
@@ -117,6 +117,12 @@ void loop()
     for (int i = 0; i < 6; i++)
     {
         drivers[i].moveAtVelocity(0);
+        drivers[i].disable();
     }
-    delay(idle_period * 1000);
+    esp_sleep_enable_timer_wakeup(60 * uS_TO_S_FACTOR);
+    esp_deep_sleep_start();
+}
+
+void loop()
+{
 }
