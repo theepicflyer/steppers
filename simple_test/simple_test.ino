@@ -8,10 +8,10 @@
 #define uS_TO_S_FACTOR 1000000ULL
 
 // Black V4 PCB
-const int UART1_RX = 12; // LilyGo UART1 RX pin
-const int UART1_TX = 13; // LilyGo UART1 TX pin
-const int UART2_RX = 2;  // LilyGo UART2 RX pin
-const int UART2_TX = 15; // LilyGo UART2 TX pin
+const int UART1_RX = 36; // LilyGo UART1 RX pin
+const int UART1_TX = 12; // LilyGo UART1 TX pin
+const int UART2_RX = 37;  // LilyGo UART2 RX pin
+const int UART2_TX = 2; // LilyGo UART2 TX pin
 
 // White V3 PCB
 // const int UART1_RX = 26;  // LilyGo UART1 RX pin
@@ -25,7 +25,7 @@ TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
 bool invert_direction = true;
 
 // Use Hardware Serial1 for TMC2209 communication
-const uint8_t RUN_CURRENT_PERCENT = 70;
+const uint8_t RUN_CURRENT_PERCENT = 80;
 const uint8_t HOLD_CURRENT_PERCENT = 0;
 
 const float idle_percent = 0.85;
@@ -72,12 +72,12 @@ void setup()
     tft.drawString("HELLO", tft.width() / 2, tft.height() / 2);
 
     // RTC setup
-    if (!rtc.begin())
-    {
-        tft.drawString("ERROR: RTC NOT DETECTED", tft.width() / 2, tft.height() / 2);
-        while (1)
-            ;
-    }
+    // if (!rtc.begin())
+    // {
+    //     tft.drawString("ERROR: RTC NOT DETECTED", tft.width() / 2, tft.height() / 2);
+    //     while (1)
+    //         ;
+    // }
 
     delay(500);
     // TMC2209 setup
@@ -88,9 +88,10 @@ void setup()
         drivers[i].setHoldCurrent(HOLD_CURRENT_PERCENT);
         drivers[i].setStandstillMode(TMC2209::STRONG_BRAKING); // When not pulling
         drivers[i].disableAutomaticCurrentScaling();
-        drivers[i].setPwmOffset(125);
+        drivers[i].setPwmOffset(255);
         drivers[i].enableCoolStep();
         drivers[i].enableInverseMotorDirection();
+        drivers[i].enable();
     }
 
     for (int i = 3; i < 6; i++)
@@ -100,29 +101,22 @@ void setup()
         drivers[i].setHoldCurrent(HOLD_CURRENT_PERCENT);
         drivers[i].setStandstillMode(TMC2209::STRONG_BRAKING); // When not pulling
         drivers[i].disableAutomaticCurrentScaling();
-        drivers[i].setPwmOffset(125);
-        // drivers[i].enableAutomaticGradientAdaptation();
+        drivers[i].setPwmOffset(255);
         drivers[i].enableCoolStep();
         drivers[i].enableInverseMotorDirection();
-        // drivers[i].enable();
-    }
-
-    for (int i = 0; i < 6; i++)
-    {
         drivers[i].enable();
-        drivers[i].moveAtVelocity(30000);
     }
-    delay(run_period * 1000);
-
-    for (int i = 0; i < 6; i++)
-    {
-        drivers[i].moveAtVelocity(0);
-        drivers[i].disable();
-    }
-    esp_sleep_enable_timer_wakeup(60 * uS_TO_S_FACTOR);
-    esp_deep_sleep_start();
 }
 
 void loop()
 {
+    drivers[0].moveAtVelocity(30000);
+    drivers[1].moveAtVelocity(30000);
+
+    delay(2000);
+
+    drivers[0].moveAtVelocity(0);
+    drivers[1].moveAtVelocity(0);
+
+    delay(2000);
 }

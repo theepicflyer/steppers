@@ -15,6 +15,12 @@ const int UART1_TX = 13; // LilyGo UART1 TX pin
 const int UART2_RX = 2;  // LilyGo UART2 RX pin
 const int UART2_TX = 15; // LilyGo UART2 TX pin
 
+// Black V4 PCB BTT
+// const int UART1_RX = 36; // LilyGo UART1 RX pin
+// const int UART1_TX = 12; // LilyGo UART1 TX pin
+// const int UART2_RX = 37;  // LilyGo UART2 RX pin
+// const int UART2_TX = 2; // LilyGo UART2 TX pin
+
 // White V3 PCB
 // const int UART1_RX = 26;  // LilyGo UART1 RX pin
 // const int UART1_TX = 17;  // LilyGo UART1 TX pin
@@ -151,7 +157,8 @@ void setup()
     // Calculate and sleep until next roll time
     uint32_t nextRollTime = wakeTime + int(ROLLOUT_INTERVAL * 60);
     uint32_t sleepTime = nextRollTime - rtc.now().unixtime();
-    esp_sleep_enable_timer_wakeup(sleepTime * uS_TO_S_FACTOR);
+    uint64_t sleepTimeMicro = sleepTime * uS_TO_S_FACTOR;
+    esp_sleep_enable_timer_wakeup(sleepTimeMicro);
     esp_deep_sleep_start();
 }
 
